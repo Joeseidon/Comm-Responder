@@ -55,29 +55,26 @@ def systemTest():
 			commTesting(cmd='Rx')
 			
 def responseTest(cmd=0x00):
-	dic = {'0x01':0x23477726}
+	dic = {0x01:0x23477726}
 	cmd_valid = False
 	while not cmd_valid: 	#Tx msg not in cmd list
-		'''nbChars = ser.inWaiting()
-		if nbChars > 0:
-			data = ser.readline()
-			
-			he = codecs.encode(data,'hex')
-			print(he)
-			if dic[he]:
-				cmd_valid = True'''
 		data = ser.readline()
 		if data:
-			print("Recieved: ", data)
 			data = data.replace(b'\n',b'')
 			data = data.replace(b'\r',b'')
+			strdata = data.decode(encoding='UTF-8')
+			if len(strdata) > 0:
 			
-			cmd_bytes = bytearray.fromhex(data.hex())
-			print("Cmd Bytes: ", cmd_bytes)
-			for byte in cmd_bytes:
-				if byte in dic:
+				print("Recieved: ", data)
+				print("Str Data: ",strdata)
+				
+				cmd_key = int(strdata)
+				if cmd_key in dic.keys():
+					print("Found!")
 					cmd_valid = True
-					cmd = byte_compile
+					cmd = cmd_key
+				else:
+					print(dic.keys())
 	
 	if dic[cmd]:
 		b = bytes(str(dic[cmd]),'UTF-8')
