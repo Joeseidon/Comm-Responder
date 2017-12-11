@@ -10,6 +10,6 @@ ser = serial.Serial(
    timeout = 1
 )
 while True:
-   message = str(input('>> '))
+   message = str(input('>> ')+'\n')
    ser.write(bytes(message, 'UTF-8')) 
    time.sleep(1)

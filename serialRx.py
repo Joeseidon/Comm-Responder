@@ -7,8 +7,7 @@ ser = serial.Serial(
    parity = serial.PARITY_NONE,
    stopbits = serial.STOPBITS_ONE,
    bytesize = serial.EIGHTBITS,
-   timeout = 1
+   timeout = 10
 )
 while True:
    print (('SERIAL PORT:'), ser.readline())
-   time.sleep(1)

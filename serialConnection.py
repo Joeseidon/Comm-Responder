@@ -53,7 +53,7 @@ class SerialComm():
 		else:
 			self.port = None
 			print("Invalid Use")
-		self.port = "/dev/serial0"
+		#self.port = "/dev/serial0"
 			
 		#create serial module
 		self.ser = serial.Serial(self.port,
@@ -88,10 +88,10 @@ class SerialComm():
 		print("Operation Started in Mode: ", self.op_mode, "Operation = ",self.operate)
 		if(self.op_mode == Op_Mode.SENDING):
 			while(self.operate):
-				#print("Sending: ", self.msg)
+				
 				self.ser.write(self.msg)
 				time.sleep(1)
-				
+				print("Sending: ", self.msg)
 		else:
 			while(self.operate):
 				time.sleep(1)
