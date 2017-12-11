@@ -26,7 +26,7 @@ import json
 from collections import OrderedDict
 def main(args):
 	newDic = {}
-	templist=[]
+	templist=[0xFF,0x00]
 	with open('responseLookup.json', 'w') as f:
 		for i in range(0,256):
 			newDic.update({i:templist})

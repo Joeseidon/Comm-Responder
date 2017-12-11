@@ -25,6 +25,8 @@
 import serial
 import time
 import codecs
+import json
+
 ser = serial.Serial(
    port = '/dev/ttyAMA0',
    baudrate = 9600,
@@ -55,30 +57,38 @@ def systemTest():
 			commTesting(cmd='Rx')
 			
 def responseTest(cmd=0x00):
-	dic = {0x01:0x23477726}
+	with open('responseLookup.json', 'r') as f:
+		dic = json.load(f)
+	#dic = {0x01:0x23477726}
+	print("Dictionary Loaded", dic)
 	cmd_valid = False
 	while not cmd_valid: 	#Tx msg not in cmd list
 		data = ser.readline()
+		print("Data Found: ", data)
 		if data:
 			#replace \r and \n if any are present in the message
 			data = data.replace(b'\n',b'')
 			data = data.replace(b'\r',b'')
 			#convert to str
 			strdata = data.decode(encoding='UTF-8')
+			print("String Data: ",strdata ,len(strdata))
 			if len(strdata) > 0:
 				#if there is data convert data into an int				
-				cmd = int(strdata)
-				if cmd in dic.keys():
+				#cmd = int(strdata)
+				print("Cmd == ",strdata)
+				if str(cmd) in dic.keys():
 					#if key found in look up table enable response
+					print("Found a key")
 					cmd_valid = True
+					cmd = strdata
 	
 	if dic[cmd]:
-		b = bytes(str(dic[cmd]),'UTF-8')
+		b = bytes(str(dic[cmd][0]),'UTF-8')
 		bary = bytearray(b)
-		print(bary)
+		#print(bary)
 		ser.write(bary)
 		time.sleep(1)
-		print("Sent Response")
+		#print("Sent Response")
 		
 def main(args):
 	responseTest(cmd=0x01)
