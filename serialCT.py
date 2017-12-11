@@ -24,6 +24,7 @@
 
 import serial
 import time
+import codecs
 ser = serial.Serial(
    port = '/dev/ttyAMA0',
    baudrate = 9600,
@@ -41,6 +42,7 @@ def commTesting(cmd):
 		if('quit tx' in message): return 0
 		ser.write(bytes(message, 'UTF-8')) 
 		time.sleep(1)
+		ser.write(bytearray([4,54,77]))
 		
 def systemTest():
 	tx = ['t','T']
@@ -51,8 +53,43 @@ def systemTest():
 			commTesting(cmd='Tx')
 		elif userinput in rx:
 			commTesting(cmd='Rx')
+			
+def responseTest(cmd=0x00):
+	dic = {'0x01':0x23477726}
+	cmd_valid = False
+	while not cmd_valid: 	#Tx msg not in cmd list
+		'''nbChars = ser.inWaiting()
+		if nbChars > 0:
+			data = ser.readline()
+			
+			he = codecs.encode(data,'hex')
+			print(he)
+			if dic[he]:
+				cmd_valid = True'''
+		data = ser.readline()
+		if data:
+			print("Recieved: ", data)
+			data = data.replace(b'\n',b'')
+			data = data.replace(b'\r',b'')
+			
+			cmd_bytes = bytearray.fromhex(data.hex())
+			print("Cmd Bytes: ", cmd_bytes)
+			for byte in cmd_bytes:
+				if byte in dic:
+					cmd_valid = True
+					cmd = byte_compile
+	
+	if dic[cmd]:
+		b = bytes(str(dic[cmd]),'UTF-8')
+		bary = bytearray(b)
+		print(bary)
+		ser.write(bary)
+		time.sleep(1)
+		print("Sent Response")
+		
 def main(args):
-	systemTest()
+	responseTest(cmd=0x01)
+	#systemTest()
 
 if __name__ == '__main__':
     import sys
