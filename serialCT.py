@@ -52,7 +52,7 @@ def systemTest():
 		elif userinput in rx:
 			commTesting(cmd='Rx')
 def main(args):
-	#systemTest()
+	systemTest()
 
 if __name__ == '__main__':
     import sys
