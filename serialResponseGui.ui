@@ -220,9 +220,9 @@
    <widget class="QTableWidget" name="tableWidget">
     <property name="geometry">
      <rect>
-      <x>230</x>
+      <x>180</x>
       <y>20</y>
-      <width>211</width>
+      <width>311</width>
       <height>191</height>
      </rect>
     </property>
@@ -248,11 +248,11 @@
       <x>440</x>
       <y>50</y>
       <width>199</width>
-      <height>138</height>
+      <height>175</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
+     <item alignment="Qt::AlignHCenter">
       <widget class="QLabel" name="label_6">
        <property name="text">
         <string>New Association</string>
@@ -261,25 +261,35 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="1" column="1">
+       <item row="2" column="1">
         <widget class="QLineEdit" name="lineEdit"/>
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Code</string>
+          <string>Input Code</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
+       <item row="2" column="0">
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Response</string>
+          <string>Output Data</string>
          </property>
         </widget>
        </item>
        <item row="0" column="1">
         <widget class="QComboBox" name="comboBox_4"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Output Code</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="comboBox_5"/>
        </item>
       </layout>
      </item>
@@ -297,7 +307,7 @@
      <rect>
       <x>60</x>
       <y>10</y>
-      <width>231</width>
+      <width>361</width>
       <height>291</height>
      </rect>
     </property>
@@ -310,7 +320,23 @@
       </widget>
      </item>
      <item>
-      <widget class="QTableWidget" name="tableWidget_2"/>
+      <widget class="QTableWidget" name="tableWidget_2">
+       <column>
+        <property name="text">
+         <string>Input Code</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Output Code</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Output Data</string>
+        </property>
+       </column>
+      </widget>
      </item>
     </layout>
    </widget>
