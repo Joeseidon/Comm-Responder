@@ -60,21 +60,17 @@ def responseTest(cmd=0x00):
 	while not cmd_valid: 	#Tx msg not in cmd list
 		data = ser.readline()
 		if data:
+			#replace \r and \n if any are present in the message
 			data = data.replace(b'\n',b'')
 			data = data.replace(b'\r',b'')
+			#convert to str
 			strdata = data.decode(encoding='UTF-8')
 			if len(strdata) > 0:
-			
-				print("Recieved: ", data)
-				print("Str Data: ",strdata)
-				
-				cmd_key = int(strdata)
-				if cmd_key in dic.keys():
-					print("Found!")
+				#if there is data convert data into an int				
+				cmd = int(strdata)
+				if cmd in dic.keys():
+					#if key found in look up table enable response
 					cmd_valid = True
-					cmd = cmd_key
-				else:
-					print(dic.keys())
 	
 	if dic[cmd]:
 		b = bytes(str(dic[cmd]),'UTF-8')
