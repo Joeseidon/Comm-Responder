@@ -60,7 +60,7 @@ def responseTest(cmd=0x00):
 	with open('responseLookup.json', 'r') as f:
 		dic = json.load(f)
 	#dic = {0x01:0x23477726}
-	print("Dictionary Loaded", dic)
+	#print("Dictionary Loaded", dic)
 	cmd_valid = False
 	while not cmd_valid: 	#Tx msg not in cmd list
 		data = ser.readline()
@@ -83,7 +83,7 @@ def responseTest(cmd=0x00):
 					cmd = strdata
 	
 	if dic[cmd]:
-		b = bytes(str(dic[cmd][0]),'UTF-8')
+		b = bytes(str(dic[cmd]['selected']),'UTF-8')
 		bary = bytearray(b)
 		#print(bary)
 		ser.write(bary)

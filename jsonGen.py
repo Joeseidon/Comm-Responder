@@ -29,7 +29,7 @@ def main(args):
 	templist=[0xFF,0x00]
 	with open('responseLookup.json', 'w') as f:
 		for i in range(0,256):
-			newDic.update({i:templist})
+			newDic.update({i:{'data':templist,'selected':templist[0]}})
 		OrderedDict(sorted(newDic.items(), key=lambda t: t[0]))
 		json.dump(newDic,f)
 	
