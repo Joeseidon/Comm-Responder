@@ -42,6 +42,15 @@
       <height>10000</height>
      </size>
     </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="wordWrap">
+     <bool>false</bool>
+    </property>
+    <attribute name="verticalHeaderVisible">
+     <bool>false</bool>
+    </attribute>
     <column>
      <property name="text">
       <string>Input ID</string>
@@ -148,6 +157,9 @@
         <width>431</width>
         <height>241</height>
        </rect>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
       </property>
       <column>
        <property name="text">
@@ -342,6 +354,9 @@
         <height>321</height>
        </rect>
       </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
       <column>
        <property name="text">
         <string>ID</string>
@@ -379,7 +394,7 @@
      <widget class="QPushButton" name="addAssociationbtn">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>150</x>
         <y>260</y>
         <width>198</width>
         <height>31</height>
