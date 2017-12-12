@@ -23,24 +23,33 @@
 #  
 
 from PyQt4 import QtGui, QtCore, uic
+from collections import OrderedDict
+from enum import Enum
 import json
 import os
 import sys
-from collections import OrderedDict
+import serial
+import time
 
-from enum import Enum
 class Op_Mode(Enum):
 	SENDING 	= 0
 	RECEIVING	= 1
+	
+ser = serial.Serial(
+   port = '/dev/ttyAMA0',
+   baudrate = 9600,
+   parity = serial.PARITY_NONE,
+   stopbits = serial.STOPBITS_ONE,
+   bytesize = serial.EIGHTBITS,
+   timeout = 1
+)
 
 class ResponseBox(QtGui.QComboBox):
-	def __init__(self,index, data, handler, parent):
+	def __init__(self,index, data):
 		super(ResponseBox, self).__init__()
 		self.index = index
 		self.data = data["data"]
 		self.selected = data['selected']
-		self.handler = handler
-		self.parent = parent
 		
 	def getIndex(self):
 		return self.index
@@ -48,18 +57,10 @@ class ResponseBox(QtGui.QComboBox):
 	def setIndex(self,i):
 		self.index = i
 		
-	def selectionHandler(self):
-		print('selected new response')
-		self.selected = self.currentText()
-		self.parent.handler(index = self.index, selected = self.selected)
-		
 	def configure(self):
 		#add data to box 
 		for item in self.data:
-			self.addItem(str(hex(item)))
-		#add selection change handler
-		self.currentIndexChanged.connect(lambda:self.selectionHandler)
-		print("configured")
+			self.addItem(item)
 
 class MyWindow(QtGui.QMainWindow):  
 	def __init__(self):
@@ -77,6 +78,10 @@ class MyWindow(QtGui.QMainWindow):
 		self.Operation_Mode = Op_Mode.SENDING
 		self.pSending = False
 		self.pSendfreq = 100
+		self.defaultEncoding = "UTF8"
+		
+		self.pID = '1'
+		self.pData = '234fac'
 		
 		#Timer definitions
 		self.timer = QtCore.QTimer()
@@ -105,13 +110,19 @@ class MyWindow(QtGui.QMainWindow):
 		self.updateLookupTablebtn.clicked.connect(self.updateLookupTable)
 	
 	def addNewAssoc(self):
-		index = str(self.newAssocID.currentText())
-		print(index)
-		self.responseLookupTbl[index]['data'].append(int(hex(self.newAssocData.text())))
+		index = self.newAssocID.currentText()
+		self.responseLookupTbl[index]['data'].append(self.newAssocData.text())
 		self.boxlist[int(index)].addItem(self.newAssocData.text())
-		#temp.addItem('Test')
-		#self.cmdRespAssocTbl.setItem(1,1,temp)
-
+		
+	def createMsg(self, ID='01', data='234dfs'):
+		#Conver id and data to bytes
+		combination = ID + data
+		byteString = bytes(combination, self.defaultEncoding)
+		#Calculate CRC and append to byte string
+			#TODO
+		#return byte string to be sent over serial connection 
+		return byteString
+		
 	def startPmsg(self):
 		
 		pass
@@ -121,32 +132,44 @@ class MyWindow(QtGui.QMainWindow):
 		pass
 		
 	def sendQuickMsg(self):
-		
-		
-		pass
+		msg = self.createMsg(ID=self.pID, data=self.pData)
+		self.sendSerialMessage(msg)
 
 	def sendPmsg(self):
-		#Get code 
-		
-		#Get Data
-		
-		#Combine into 1 message
+		#Get ID and Data. Convert to bytes
+		msg = self.createMsg(ID=self.pID, data=self.pData)
 		
 		#send out message
 		
 		pass
 		
-	def updateIndexData(self, index, selected):
-		self.responseLookupTbl[index]['selected'] = selected
-		
+	def sendSerialMessage(self, msg=b'Testing'):
+		try:
+			ser.write(msg)
+			time.sleep(1)
+		except:
+			#TODO
+			pass
+			
 	def updateLookupTable(self):
+		abs_path = os.path.join(os.path.dirname(__file__), 'responseLookup.json')
 		#If new update local dictionary then write json to file
+		with open('responseLookup.json', 'w') as f:
+			json.dump(self.responseLookupTbl,f)
 		
-		pass
-	
-	def responseUpdated(self, boxIndex):
+		#Reload
+		with open(abs_path, 'r') as f:
+			self.responseLookupTbl = json.load(f)
 		
-		pass
+	def updateResponseData(self,i):
+		x = 0
+		sender = self.sender()
+		for index in self.boxlist:
+			if(index == sender):
+				#print("Found source! at, ", x) 
+				self.responseLookupTbl[str(x)]['selected']=sender.currentText()
+			x+=1
+			
 		
 	def loadLookupTable(self):
 		#Read in look up table
@@ -163,10 +186,10 @@ class MyWindow(QtGui.QMainWindow):
 		self.boxlist=[]
 		#Load data into GUI table
 		for i in range(0,256):
-			print(i,str(hex(i)))
-			newBox = ResponseBox(i, self.responseLookupTbl[str(i)], handler = self.updateIndexData, parent=self)
+			newBox = ResponseBox(i, self.responseLookupTbl[str(i)])
 			newBox.configure()
 			self.boxlist.append(newBox)
+			newBox.currentIndexChanged.connect(self.updateResponseData)
 			#Add box to table
 			self.cmdRespAssocTbl.setItem(i,0,QtGui.QTableWidgetItem(str(hex(i))))
 			self.cmdRespAssocTbl.setCellWidget(i,1,newBox)
@@ -175,6 +198,7 @@ class MyWindow(QtGui.QMainWindow):
 			self.newAssocID.addItem(str(i))
 			
 	def toInt(self,elem):
+		#used for key in sort methods
 		return int(elem)
 	
 	def onTabChange(self, i):
@@ -183,7 +207,6 @@ class MyWindow(QtGui.QMainWindow):
 		pass
 	
 	def closeEvent(self,event):
-
 
 		pass
 		
