@@ -31,6 +31,14 @@ import sys
 import serial
 import time
 
+'''
+	PI PIN  ::   FUNCTION
+-----------------------------
+	   6			GND
+	   8			TX
+	   10			RX
+'''
+
 class Op_Mode(Enum):
 	SENDING 	= 0
 	RECEIVING	= 1
@@ -42,6 +50,14 @@ ser = serial.Serial(
    stopbits = serial.STOPBITS_ONE,
    bytesize = serial.EIGHTBITS,
    timeout = 1
+)
+ser2 = serial.Serial(
+   port = '/dev/ttyAMA0',
+   baudrate = 9600,
+   parity = serial.PARITY_NONE,
+   stopbits = serial.STOPBITS_ONE,
+   bytesize = serial.EIGHTBITS,
+   timeout = 0
 )
 
 class ResponseBox(QtGui.QComboBox):
@@ -83,10 +99,17 @@ class MyWindow(QtGui.QMainWindow):
 		self.pID = '1'
 		self.pData = '234fac'
 		
+		self.pLogIndex = 0
+		self.pDataPresent = False
+		
 		#Timer definitions
 		self.timer = QtCore.QTimer()
 		self.timer.setInterval(self.pMsgFreq)
 		self.timer.timeout.connect(self.sendPmsg)
+		
+		self.pDataTimer = QtCore.QTimer()
+		self.pDataTimer.setInterval(self.pMsgFreq/2)
+		self.pDataTimer.timeout.connect(self.checkInput)
 
 		#Register GUI connections
 		self.tabWidget.currentChanged.connect(self.onTabChange)
@@ -109,6 +132,21 @@ class MyWindow(QtGui.QMainWindow):
 		#self.newAssocData
 		self.addAssociationbtn.clicked.connect(self.addNewAssoc)
 		self.updateLookupTablebtn.clicked.connect(self.updateLookupTable)
+		
+	def checkInput(self):
+		print("Checked")
+		bytesInwaiting = ser.inWaiting()
+		if(bytesInwaiting >= 4):
+			
+			
+			#read
+			pIncomingData = ser.read(bytesInwaiting)
+			print("Data Found", pIncomingData)
+			pIncomingData = pIncomingData.decode(encoding='UTF-8')
+			self.pIncomingLog.setItem(self.pLogIndex,0,QtGui.QTableWidgetItem("test"))
+			self.pIncomingLog.setItem(self.pLogIndex,2,QtGui.QTableWidgetItem(pIncomingData[:-2]))
+			
+			self.pLogIndex+=1
 		
 	def updateFrequentSendData(self):
 		if(self.sender() == self.pMsgID):
@@ -159,9 +197,17 @@ class MyWindow(QtGui.QMainWindow):
 			
 			#Start timer
 			self.timer.start()
+			self.pDataTimer.start()
 		else:
 			return 0
 			
+		'''while self.pSending:
+			if(self.pDataPresent):
+				#analyze
+				
+				#reset
+				self.pDataPresent=False
+		'''			
 	def verifyPdata(self):
 		if(not(self.pMsgID.currentText() == None) and not(self.pMsgData.currentText() == None) and (self.pMsgFreqspin.value() > 0)):
 			return True
