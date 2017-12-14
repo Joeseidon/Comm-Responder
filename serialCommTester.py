@@ -51,14 +51,6 @@ ser = serial.Serial(
    bytesize = serial.EIGHTBITS,
    timeout = 1
 )
-ser2 = serial.Serial(
-   port = '/dev/ttyAMA0',
-   baudrate = 9600,
-   parity = serial.PARITY_NONE,
-   stopbits = serial.STOPBITS_ONE,
-   bytesize = serial.EIGHTBITS,
-   timeout = 0
-)
 
 class ResponseBox(QtGui.QComboBox):
 	def __init__(self,index, data):
@@ -75,8 +67,11 @@ class ResponseBox(QtGui.QComboBox):
 		
 	def configure(self):
 		#add data to box 
-		for item in self.data:
-			self.addItem(item)
+		self.addItems(self.data)
+		for index in range(self.count()):
+			if(self.itemText(index) == self.selected):
+				self.setCurrentIndex(index)
+				break
 
 class MyWindow(QtGui.QMainWindow):  
 	def __init__(self):
@@ -101,6 +96,10 @@ class MyWindow(QtGui.QMainWindow):
 		
 		self.pLogIndex = 0
 		self.pDataPresent = False
+		self.maxLogCount = 50
+		
+		self.cmdRespIndex = 0
+		self.cmdRespMaxCount = 50
 		
 		#Timer definitions
 		self.timer = QtCore.QTimer()
@@ -110,6 +109,10 @@ class MyWindow(QtGui.QMainWindow):
 		self.pDataTimer = QtCore.QTimer()
 		self.pDataTimer.setInterval(self.pMsgFreq/2)
 		self.pDataTimer.timeout.connect(self.checkInput)
+		
+		self.cmdResponseTimer = QtCore.QTimer()
+		self.cmdResponseTimer.setInterval(self.pMsgFreq/2)
+		self.cmdResponseTimer.timeout.connect(self.cmdRespMonitor)
 
 		#Register GUI connections
 		self.tabWidget.currentChanged.connect(self.onTabChange)
@@ -123,30 +126,13 @@ class MyWindow(QtGui.QMainWindow):
 		self.pMsgFreqspin.valueChanged.connect(self.updateFrequentSendData)
 
 			#Command Response Testing
-		#self.IOLog
-		#self.cmdRespStartbtn
-		#self.cmdRespStopbtn
+		self.cmdRespStartbtn.clicked.connect(self.startMonitor)
+		self.cmdRespStopbtn.clicked.connect(self.stopMonitor)
 
 			#Update Associations
-		#self.newAssocID
-		#self.newAssocData
 		self.addAssociationbtn.clicked.connect(self.addNewAssoc)
 		self.updateLookupTablebtn.clicked.connect(self.updateLookupTable)
-		
-	def checkInput(self):
-		print("Checked")
-		bytesInwaiting = ser.inWaiting()
-		if(bytesInwaiting >= 4):
-			
-			
-			#read
-			pIncomingData = ser.read(bytesInwaiting)
-			print("Data Found", pIncomingData)
-			pIncomingData = pIncomingData.decode(encoding='UTF-8')
-			self.pIncomingLog.setItem(self.pLogIndex,0,QtGui.QTableWidgetItem("test"))
-			self.pIncomingLog.setItem(self.pLogIndex,2,QtGui.QTableWidgetItem(pIncomingData[:-2]))
-			
-			self.pLogIndex+=1
+		self.cmdRespStopbtn.setEnabled(False)
 		
 	def updateFrequentSendData(self):
 		if(self.sender() == self.pMsgID):
@@ -184,30 +170,99 @@ class MyWindow(QtGui.QMainWindow):
 		combination = ID + data
 		byteString = bytes(combination, self.defaultEncoding)
 		#Calculate CRC and append to byte string
-			#TODO
+		#TODO:perform crc algorithm to attain actual crc value
+		crc=0x00
 		#return byte string to be sent over serial connection 
-		return byteString
+		return byteString,crc
+	
+	def startMonitor(self):
+		self.cmdRespStartbtn.setEnabled(False)
+		self.cmdRespStopbtn.setEnabled(True)
 		
+		#start buffer read timer
+		self.cmdResponseTimer.start()
+		
+	def stopMonitor(self):
+		self.cmdRespStartbtn.setEnabled(True)
+		self.cmdRespStopbtn.setEnabled(False)
+		
+		#start buffer read timer
+		self.cmdResponseTimer.stop()
+		
+	def cmdRespMonitor(self):
+		if(ser.inWaiting() > 0):
+			#Reset log index to prevent overflow
+			if(self.cmdRespIndex >= 50):
+				self.cmdRespIndex = 0
+			
+			#read
+			incomingData = ser.readline()
+			
+			#print("Data Found", pIncomingData)
+			incomingData = incomingData.decode(encoding='UTF-8')
+			
+			#ID
+			self.IOLog.setItem(self.cmdRespIndex,0,QtGui.QTableWidgetItem("0x"+incomingData[:2]))
+			#Data
+			self.IOLog.setItem(self.cmdRespIndex,1,QtGui.QTableWidgetItem("0x"+incomingData[2:-2]))
+			#CRC
+			self.IOLog.setItem(self.cmdRespIndex,2,QtGui.QTableWidgetItem("0x"+incomingData[-2:]))
+			
+			#Determine response 
+			index = str(int(incomingData[:2],base=16))
+			resp = self.responseLookupTbl[index]['selected']
+			
+			#send response
+			byteStr,crc = self.createMsg(ID=incomingData[:2], data=resp)
+			self.sendSerialMessage(byteStr)
+			
+			#Udpate Log
+			crc=str(crc)[2:] #remove leading '0x'
+			self.IOLog.setItem(self.cmdRespIndex,3,QtGui.QTableWidgetItem("0x"+incomingData[:2]+resp+crc))
+			
+			self.cmdRespIndex+=1
+			
 	def startPmsg(self):
 		#Verify all required data has been entered
 		if self.verifyPdata():
+			print("Start Config")
 			self.pSending = True
 			self.startTimedSendbtn.setEnabled(False)
 			self.stopTimedSendbtn.setEnabled(True)
+			
+			#reset serial buffers
+			ser.flushInput()
+			ser.flushOutput()
 			
 			#Start timer
 			self.timer.start()
 			self.pDataTimer.start()
 		else:
 			return 0
+		
+	def checkInput(self):
+		#print("Checked")
+		#bytesInwaiting = ser.inWaiting()
+		if(ser.inWaiting() > 0):
+			#Reset log index to prevent overflow
+			if(self.pLogIndex >= 50):
+				self.pLogIndex = 0
 			
-		'''while self.pSending:
-			if(self.pDataPresent):
-				#analyze
-				
-				#reset
-				self.pDataPresent=False
-		'''			
+			#read
+			pIncomingData = ser.readline()
+			
+			#print("Data Found", pIncomingData)
+			pIncomingData = pIncomingData.decode(encoding='UTF-8')
+			
+			#ID
+			self.pIncomingLog.setItem(self.pLogIndex,0,QtGui.QTableWidgetItem("0x"+pIncomingData[:2]))
+			#Data
+			self.pIncomingLog.setItem(self.pLogIndex,1,QtGui.QTableWidgetItem("0x"+pIncomingData[2:-2]))
+			#CRC
+			self.pIncomingLog.setItem(self.pLogIndex,2,QtGui.QTableWidgetItem("0x"+pIncomingData[-2:]))
+			
+			self.pLogIndex+=1
+			
 	def verifyPdata(self):
 		if(not(self.pMsgID.currentText() == None) and not(self.pMsgData.currentText() == None) and (self.pMsgFreqspin.value() > 0)):
 			return True
@@ -223,7 +278,7 @@ class MyWindow(QtGui.QMainWindow):
 	def sendPmsg(self):
 		if self.pSending or (self.sender() == self.quickSendbtn):
 			#Get ID and Data. Convert to bytes
-			msg = self.createMsg(ID=self.pID, data=self.pData)
+			msg,crc = self.createMsg(ID=self.pID, data=self.pData)
 			
 			#send out message
 			self.sendSerialMessage(msg)
@@ -267,6 +322,8 @@ class MyWindow(QtGui.QMainWindow):
 		
 		#Create Table
 		self.cmdRespAssocTbl.setRowCount(256)
+		self.pIncomingLog.setRowCount(50)
+		self.IOLog.setRowCount(50)
 		
 		self.boxlist=[]
 		#Load data into GUI table
@@ -290,11 +347,10 @@ class MyWindow(QtGui.QMainWindow):
 		#used for key in sort methods
 		return int(elem)
 	
-	def onTabChange(self, i):
-
-
+	def onTabChange(self, event):
+		
 		pass
-	
+		
 	def closeEvent(self,event):
 
 		pass

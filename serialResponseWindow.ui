@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>980</width>
-    <height>561</height>
+    <height>555</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -91,7 +91,7 @@
      </size>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -129,7 +129,11 @@
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QComboBox" name="pMsgID"/>
+        <widget class="QComboBox" name="pMsgID">
+         <property name="currentIndex">
+          <number>-1</number>
+         </property>
+        </widget>
        </item>
        <item row="1" column="1">
         <widget class="QComboBox" name="pMsgData"/>
@@ -348,9 +352,9 @@
      <widget class="QTableWidget" name="IOLog">
       <property name="geometry">
        <rect>
-        <x>110</x>
+        <x>30</x>
         <y>40</y>
-        <width>311</width>
+        <width>481</width>
         <height>321</height>
        </rect>
       </property>
@@ -370,6 +374,11 @@
       <column>
        <property name="text">
         <string>CRC</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Response</string>
        </property>
       </column>
      </widget>
