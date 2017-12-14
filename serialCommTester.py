@@ -170,14 +170,21 @@ class MyWindow(QtGui.QMainWindow):
 		#remove 0x if present
 		if(ID[0:2]=='0x'):
 			ID = ID[2:]
-		if(data[0:2]=='0x'):
+		if(data == "None"):
+			data = "" #replace with empty string for proccessing
+		elif(data[0:2]=='0x'):
 			data = data[2:]
 			
 		#Determine CRC
 		crc = crc16.crc16xmodem(bytes(data,self.defaultEncoding))
 		print(crc)
-		
-		#Form MSG
+		if(crc==0):
+			crc = '0x0000' #crc needs to be expressed as 2 bytes
+		else:
+			#translate crc into hex value from int. Then convert to string
+			crc=str(hex(crc))
+		if(crc[:2]=='0x'):
+			crc=crc[2:]
 		combination = ID + data + crc
 		byteString = bytes(combination, self.defaultEncoding)
 		
@@ -234,7 +241,8 @@ class MyWindow(QtGui.QMainWindow):
 			self.sendSerialMessage(byteStr)
 			
 			#Udpate Log
-			crc=str(hex(crc))[2:] #remove leading '0x'
+			if(resp == "None"):
+				resp="" #replaced with empty string for logging
 			self.IOLog.setItem(self.cmdRespIndex,3,QtGui.QTableWidgetItem("0x"+incomingData[:2]+resp+crc))
 			
 			self.cmdRespIndex+=1
@@ -370,9 +378,17 @@ class MyWindow(QtGui.QMainWindow):
 		
 		pass
 		
+		
 	def closeEvent(self,event):
-
-		pass
+		msgBox = QtGui.QMessageBox()
+		msgBox.setIcon(QtGui.QMessageBox.Question)
+		msgBox.setText("Save Changes?")
+		msgBox.setInformativeText("By clicking yes, your associations will load automatically for next use.")
+		msgBox.setWindowTitle("Update Associations")
+		msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+		retval=msgBox.exec_()
+		if(retval == 0x4000):
+			self.updateLookupTable()
 		
 
 if __name__ == '__main__':
