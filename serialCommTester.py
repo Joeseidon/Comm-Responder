@@ -87,6 +87,7 @@ class MyWindow(QtGui.QMainWindow):
 		self.loadLookupTable()
 		
 		#Local Variables for operation
+		self.assocHaveChanged = False
 		#self.Operation_Mode = Op_Mode.SENDING
 		self.pSending = False
 		self.pMsgFreq = 100
@@ -155,6 +156,7 @@ class MyWindow(QtGui.QMainWindow):
 		self.pDataTimer.setInterval(self.pMsgFreq/2)
 	
 	def addNewAssoc(self):
+		self.assocHaveChanged = True
 		index = str(int(self.newAssocID.currentText(),base=16))
 		self.responseLookupTbl[index]['data'].append("0x"+self.newAssocData.text())
 		self.boxlist[int(index)].addItem("0x"+self.newAssocData.text())
@@ -329,6 +331,7 @@ class MyWindow(QtGui.QMainWindow):
 			self.responseLookupTbl = json.load(f)
 		
 	def updateResponseData(self,i):
+		self.assocHaveChanged = True
 		x = 0
 		sender = self.sender()
 		for index in self.boxlist:
@@ -380,15 +383,17 @@ class MyWindow(QtGui.QMainWindow):
 		
 		
 	def closeEvent(self,event):
-		msgBox = QtGui.QMessageBox()
-		msgBox.setIcon(QtGui.QMessageBox.Question)
-		msgBox.setText("Save Changes?")
-		msgBox.setInformativeText("By clicking yes, your associations will load automatically for next use.")
-		msgBox.setWindowTitle("Update Associations")
-		msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-		retval=msgBox.exec_()
-		if(retval == 0x4000):
-			self.updateLookupTable()
+		if(self.assocHaveChanged):
+			msgBox = QtGui.QMessageBox()
+			msgBox.setIcon(QtGui.QMessageBox.Question)
+			msgBox.setText("Save Changes?")
+			msgBox.setInformativeText("By clicking yes, your associations will load automatically for next use.")
+			msgBox.setWindowTitle("Update Associations")
+			msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+			retval=msgBox.exec_()
+			if(retval == 0x4000):
+				self.updateLookupTable()
+		#else just close
 		
 
 if __name__ == '__main__':
