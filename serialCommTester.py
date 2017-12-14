@@ -24,12 +24,13 @@
 
 from PyQt4 import QtGui, QtCore, uic
 from collections import OrderedDict
-from enum import Enum
+#from enum import Enum
 import json
 import os
 import sys
 import serial
 import time
+import crc16
 
 '''
 	PI PIN  ::   FUNCTION
@@ -38,11 +39,11 @@ import time
 	   8			TX
 	   10			RX
 '''
-
+'''
 class Op_Mode(Enum):
 	SENDING 	= 0
 	RECEIVING	= 1
-	
+'''
 ser = serial.Serial(
    port = '/dev/ttyAMA0',
    baudrate = 9600,
@@ -86,7 +87,7 @@ class MyWindow(QtGui.QMainWindow):
 		self.loadLookupTable()
 		
 		#Local Variables for operation
-		self.Operation_Mode = Op_Mode.SENDING
+		#self.Operation_Mode = Op_Mode.SENDING
 		self.pSending = False
 		self.pMsgFreq = 100
 		self.defaultEncoding = "UTF8"
@@ -100,6 +101,7 @@ class MyWindow(QtGui.QMainWindow):
 		
 		self.cmdRespIndex = 0
 		self.cmdRespMaxCount = 50
+		self.cmdMonitor = False
 		
 		#Timer definitions
 		self.timer = QtCore.QTimer()
@@ -148,11 +150,14 @@ class MyWindow(QtGui.QMainWindow):
 		self.pData = self.pMsgData.currentText()
 		#Update Freq
 		self.pMsgFreq = self.pMsgFreqspin.value()
+		#Update timer
+		self.timer.setInterval(self.pMsgFreq)
+		self.pDataTimer.setInterval(self.pMsgFreq/2)
 	
 	def addNewAssoc(self):
 		index = str(int(self.newAssocID.currentText(),base=16))
-		self.responseLookupTbl[index]['data'].append(self.newAssocData.text())
-		self.boxlist[int(index)].addItem(self.newAssocData.text())
+		self.responseLookupTbl[index]['data'].append("0x"+self.newAssocData.text())
+		self.boxlist[int(index)].addItem("0x"+self.newAssocData.text())
 		
 		#update pMsgData as well incase its being used 
 		self.pMsgData.clear()
@@ -167,15 +172,23 @@ class MyWindow(QtGui.QMainWindow):
 			ID = ID[2:]
 		if(data[0:2]=='0x'):
 			data = data[2:]
-		combination = ID + data
+			
+		#Determine CRC
+		crc = crc16.crc16xmodem(bytes(data,self.defaultEncoding))
+		print(crc)
+		
+		#Form MSG
+		combination = ID + data + crc
 		byteString = bytes(combination, self.defaultEncoding)
-		#Calculate CRC and append to byte string
-		#TODO:perform crc algorithm to attain actual crc value
-		crc=0x00
+		
 		#return byte string to be sent over serial connection 
 		return byteString,crc
 	
 	def startMonitor(self):
+		#confirm psending mode is off
+		if self.pSending:
+			self.stopPmsg()
+		self.cmdMonitor = True
 		self.cmdRespStartbtn.setEnabled(False)
 		self.cmdRespStopbtn.setEnabled(True)
 		
@@ -183,6 +196,7 @@ class MyWindow(QtGui.QMainWindow):
 		self.cmdResponseTimer.start()
 		
 	def stopMonitor(self):
+		self.cmdMonitor = False
 		self.cmdRespStartbtn.setEnabled(True)
 		self.cmdRespStopbtn.setEnabled(False)
 		
@@ -201,31 +215,36 @@ class MyWindow(QtGui.QMainWindow):
 			#print("Data Found", pIncomingData)
 			incomingData = incomingData.decode(encoding='UTF-8')
 			
-			#ID
+			#ID (first byte)
 			self.IOLog.setItem(self.cmdRespIndex,0,QtGui.QTableWidgetItem("0x"+incomingData[:2]))
-			#Data
-			self.IOLog.setItem(self.cmdRespIndex,1,QtGui.QTableWidgetItem("0x"+incomingData[2:-2]))
-			#CRC
-			self.IOLog.setItem(self.cmdRespIndex,2,QtGui.QTableWidgetItem("0x"+incomingData[-2:]))
+			#Data (can be None)
+			self.IOLog.setItem(self.cmdRespIndex,1,QtGui.QTableWidgetItem("0x"+incomingData[2:-4]))
+			#CRC (last two bytes
+			self.IOLog.setItem(self.cmdRespIndex,2,QtGui.QTableWidgetItem("0x"+incomingData[-4:]))
 			
 			#Determine response 
 			index = str(int(incomingData[:2],base=16))
 			resp = self.responseLookupTbl[index]['selected']
+			if(resp[:2]=='0x'):
+				#remove
+				resp=resp[2:]
 			
 			#send response
 			byteStr,crc = self.createMsg(ID=incomingData[:2], data=resp)
 			self.sendSerialMessage(byteStr)
 			
 			#Udpate Log
-			crc=str(crc)[2:] #remove leading '0x'
+			crc=str(hex(crc))[2:] #remove leading '0x'
 			self.IOLog.setItem(self.cmdRespIndex,3,QtGui.QTableWidgetItem("0x"+incomingData[:2]+resp+crc))
 			
 			self.cmdRespIndex+=1
 			
 	def startPmsg(self):
+		#if monitor is running, stop it 
+		if self.cmdMonitor:
+			self.stopMonitor()
 		#Verify all required data has been entered
 		if self.verifyPdata():
-			print("Start Config")
 			self.pSending = True
 			self.startTimedSendbtn.setEnabled(False)
 			self.stopTimedSendbtn.setEnabled(True)
