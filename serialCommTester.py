@@ -181,11 +181,14 @@ class MyWindow(QtGui.QMainWindow):
 				ID='0'+ID
 		if(data == "None"):
 			data = "" #replace with empty string for proccessing
-		elif(data[0:2]=='0x'):
-			data = data[2:]
+		elif(data[:2]=='0x'):
+			data=data[2:]
+			#if data is odd add buffer 0 to perserve data when combining
+			if not(len(data) % 2 == 0):
+				data = '0'+data
 			
-		#Determine CRC (TODO: CRC is not always turned into 2 bytes of data. provide buffer zeros to fix this)
-		crc = CRCCCITT(version='FFFF').calculate(data)
+		#Determine CRC
+		crc = CRCCCITT(version='FFFF').calculate(str(int(data,base=16)))
 		#translate crc into hex value from int. Then convert to string
 		crc=str(hex(crc))
 		print(crc)
@@ -202,8 +205,15 @@ class MyWindow(QtGui.QMainWindow):
 					
 		#Create Response
 		combination = ID + data + crc
-		byteString = bytes(combination, self.defaultEncoding)
 		
+		#TODO: May need to send data in a different manner. 
+			#End point may not recieve data as desired hex values but
+			#string -> ASCII Table -> hex value.
+			#Use (stackoverflow - Sending hex over serial with python)
+		print(combination)
+		print("hex: ", bytearray.fromhex(combination))
+		byteString = bytes(combination, self.defaultEncoding)
+		#MAYBE   byteString = bytearray.fromhex(combination)
 		#return byte string to be sent over serial connection 
 		return byteString,crc
 	
