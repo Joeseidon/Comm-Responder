@@ -24,13 +24,14 @@
 
 from PyQt4 import QtGui, QtCore, uic
 from collections import OrderedDict
+from PyCRC.CRCCCITT import CRCCCITT
 #from enum import Enum
 import json
 import os
 import sys
 import serial
 import time
-import crc16
+#import crc16	#moved to pycrc
 
 '''
 	PI PIN  ::   FUNCTION
@@ -92,7 +93,7 @@ class MyWindow(QtGui.QMainWindow):
 		self.pSending = False
 		self.pMsgFreq = 100
 		self.defaultEncoding = "UTF8"
-		
+		self.crcVersion = 'FFFF'
 		self.pID = '1'
 		self.pData = '234fac'
 		
@@ -103,6 +104,10 @@ class MyWindow(QtGui.QMainWindow):
 		self.cmdRespIndex = 0
 		self.cmdRespMaxCount = 50
 		self.cmdMonitor = False
+		
+		self.liveData = self.LiveDataLog.isChecked()
+		self.pdataStore = []
+		self.cmdDataStore = []
 		
 		#Timer definitions
 		self.timer = QtCore.QTimer()
@@ -178,8 +183,8 @@ class MyWindow(QtGui.QMainWindow):
 			data = data[2:]
 			
 		#Determine CRC
-		crc = crc16.crc16xmodem(bytes(data,self.defaultEncoding))
-		print(crc)
+		#crc = crc16.crc16xmodem(bytes(data,self.defaultEncoding))
+		crc = CRCCCITT(version=self.crcVersion).calculate(bytes(data,self.defaultEncoding))
 		if(crc==0):
 			crc = '0x0000' #crc needs to be expressed as 2 bytes
 		else:
@@ -197,6 +202,8 @@ class MyWindow(QtGui.QMainWindow):
 		#confirm psending mode is off
 		if self.pSending:
 			self.stopPmsg()
+		self.liveData = self.LiveDataLog.isChecked()
+		self.LiveDataLog.setEnabled(False)
 		self.cmdMonitor = True
 		self.cmdRespStartbtn.setEnabled(False)
 		self.cmdRespStopbtn.setEnabled(True)
@@ -208,9 +215,20 @@ class MyWindow(QtGui.QMainWindow):
 		self.cmdMonitor = False
 		self.cmdRespStartbtn.setEnabled(True)
 		self.cmdRespStopbtn.setEnabled(False)
+		self.LiveDataLog.setEnabled(True)
 		
 		#start buffer read timer
 		self.cmdResponseTimer.stop()
+		
+		if not self.liveData:
+			for msg in self.cmdDataStore:
+				#ID (first byte)
+				self.IOLog.setItem(msg[0],0,QtGui.QTableWidgetItem(msg[1]))
+				#Data (can be None)
+				self.IOLog.setItem(msg[0],1,QtGui.QTableWidgetItem(msg[2]))
+				#CRC (last two bytes
+				self.IOLog.setItem(msg[0],2,QtGui.QTableWidgetItem(msg[3]))
+				self.IOLog.setItem(msg[0],3,QtGui.QTableWidgetItem(msg[4]))
 		
 	def cmdRespMonitor(self):
 		if(ser.inWaiting() > 0):
@@ -222,14 +240,19 @@ class MyWindow(QtGui.QMainWindow):
 			incomingData = ser.readline()
 			
 			#print("Data Found", pIncomingData)
-			incomingData = incomingData.decode(encoding='UTF-8')
+			incomingData = incomingData.decode(encoding=self.defaultEncoding)
 			
-			#ID (first byte)
-			self.IOLog.setItem(self.cmdRespIndex,0,QtGui.QTableWidgetItem("0x"+incomingData[:2]))
-			#Data (can be None)
-			self.IOLog.setItem(self.cmdRespIndex,1,QtGui.QTableWidgetItem("0x"+incomingData[2:-4]))
-			#CRC (last two bytes
-			self.IOLog.setItem(self.cmdRespIndex,2,QtGui.QTableWidgetItem("0x"+incomingData[-4:]))
+			if self.liveData:
+				#ID (first byte)
+				self.IOLog.setItem(self.cmdRespIndex,0,QtGui.QTableWidgetItem("0x"+incomingData[:2]))
+				#Data (can be None)
+				self.IOLog.setItem(self.cmdRespIndex,1,QtGui.QTableWidgetItem("0x"+incomingData[2:-4]))
+				#CRC (last two bytes
+				self.IOLog.setItem(self.cmdRespIndex,2,QtGui.QTableWidgetItem("0x"+incomingData[-4:]))
+			else:
+				#store data and log on stop
+				#data logged after response creation
+				pass
 			
 			#Determine response 
 			index = str(int(incomingData[:2],base=16))
@@ -245,7 +268,11 @@ class MyWindow(QtGui.QMainWindow):
 			#Udpate Log
 			if(resp == "None"):
 				resp="" #replaced with empty string for logging
-			self.IOLog.setItem(self.cmdRespIndex,3,QtGui.QTableWidgetItem("0x"+incomingData[:2]+resp+crc))
+			if self.liveData:
+				self.IOLog.setItem(self.cmdRespIndex,3,QtGui.QTableWidgetItem("0x"+incomingData[:2]+resp+crc))
+			else:
+				#log to array and log on stop
+				self.cmdDataStore.append((self.cmdRespIndex, "0x"+incomingData[:2], "0x"+incomingData[2:-4], "0x"+incomingData[-4:],"0x"+incomingData[:2]+resp+crc))
 			
 			self.cmdRespIndex+=1
 			
@@ -253,6 +280,8 @@ class MyWindow(QtGui.QMainWindow):
 		#if monitor is running, stop it 
 		if self.cmdMonitor:
 			self.stopMonitor()
+		self.liveData = self.LiveDataLog.isChecked()
+		self.LiveDataLog.setEnabled(False)
 		#Verify all required data has been entered
 		if self.verifyPdata():
 			self.pSending = True
@@ -283,13 +312,16 @@ class MyWindow(QtGui.QMainWindow):
 			#print("Data Found", pIncomingData)
 			pIncomingData = pIncomingData.decode(encoding='UTF-8')
 			
-			#ID
-			self.pIncomingLog.setItem(self.pLogIndex,0,QtGui.QTableWidgetItem("0x"+pIncomingData[:2]))
-			#Data
-			self.pIncomingLog.setItem(self.pLogIndex,1,QtGui.QTableWidgetItem("0x"+pIncomingData[2:-2]))
-			#CRC
-			self.pIncomingLog.setItem(self.pLogIndex,2,QtGui.QTableWidgetItem("0x"+pIncomingData[-2:]))
-			
+			if self.liveData:
+				#ID
+				self.pIncomingLog.setItem(self.pLogIndex,0,QtGui.QTableWidgetItem("0x"+pIncomingData[:2]))
+				#Data
+				self.pIncomingLog.setItem(self.pLogIndex,1,QtGui.QTableWidgetItem("0x"+pIncomingData[2:-4]))
+				#CRC
+				self.pIncomingLog.setItem(self.pLogIndex,2,QtGui.QTableWidgetItem("0x"+pIncomingData[-4:]))
+			else:
+				#save to an array and log on stop
+				self.pdataStore.append((self.pLogIndex,"0x"+pIncomingData[:2],"0x"+pIncomingData[2:-4],"0x"+pIncomingData[-4:]))
 			self.pLogIndex+=1
 			
 	def verifyPdata(self):
@@ -300,9 +332,19 @@ class MyWindow(QtGui.QMainWindow):
 		
 	def stopPmsg(self):
 		self.pSending = False
+		self.LiveDataLog.setEnabled(True)
 		self.startTimedSendbtn.setEnabled(True)
 		self.stopTimedSendbtn.setEnabled(False)
 		self.timer.stop()
+		#log data if not live
+		if not self.liveData:
+			for msg in self.pdataStore:
+				#ID
+				self.pIncomingLog.setItem(msg[0],0,QtGui.QTableWidgetItem(msg[1]))
+				#Data
+				self.pIncomingLog.setItem(msg[0],1,QtGui.QTableWidgetItem(msg[2]))
+				#CRC
+				self.pIncomingLog.setItem(msg[0],2,QtGui.QTableWidgetItem(msg[3]))
 
 	def sendPmsg(self):
 		if self.pSending or (self.sender() == self.quickSendbtn):

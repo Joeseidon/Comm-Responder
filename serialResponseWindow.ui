@@ -91,7 +91,7 @@
      </size>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
@@ -144,7 +144,7 @@
           <number>10000</number>
          </property>
          <property name="singleStep">
-          <number>10</number>
+          <number>1</number>
          </property>
          <property name="value">
           <number>100</number>
@@ -385,14 +385,14 @@
      <widget class="QLabel" name="label_11">
       <property name="geometry">
        <rect>
-        <x>200</x>
+        <x>160</x>
         <y>10</y>
-        <width>121</width>
+        <width>201</width>
         <height>21</height>
        </rect>
       </property>
       <property name="text">
-       <string>Data Recieved</string>
+       <string>Data Recieved &amp;&amp; Response</string>
       </property>
      </widget>
     </widget>
@@ -459,6 +459,25 @@
       </property>
      </widget>
     </widget>
+   </widget>
+   <widget class="QCheckBox" name="LiveDataLog">
+    <property name="geometry">
+     <rect>
+      <x>560</x>
+      <y>460</y>
+      <width>100</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="toolTip">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Will disable/enable live data log. While enabled, max resp/send Freq. decreases.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+    <property name="text">
+     <string>Live Data?</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
