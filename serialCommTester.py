@@ -177,21 +177,30 @@ class MyWindow(QtGui.QMainWindow):
 		#remove 0x if present
 		if(ID[0:2]=='0x'):
 			ID = ID[2:]
+			if(len(ID)<2):
+				ID='0'+ID
 		if(data == "None"):
 			data = "" #replace with empty string for proccessing
 		elif(data[0:2]=='0x'):
 			data = data[2:]
 			
-		#Determine CRC
-		#crc = crc16.crc16xmodem(bytes(data,self.defaultEncoding))
-		crc = CRCCCITT(version=self.crcVersion).calculate(bytes(data,self.defaultEncoding))
-		if(crc==0):
-			crc = '0x0000' #crc needs to be expressed as 2 bytes
-		else:
-			#translate crc into hex value from int. Then convert to string
-			crc=str(hex(crc))
+		#Determine CRC (TODO: CRC is not always turned into 2 bytes of data. provide buffer zeros to fix this)
+		crc = CRCCCITT(version='FFFF').calculate(data)
+		#translate crc into hex value from int. Then convert to string
+		crc=str(hex(crc))
+		print(crc)
 		if(crc[:2]=='0x'):
+			#remove leading '0x'
 			crc=crc[2:]
+			#confirm 2 bytes of data are used for CRC1 and CRC0
+			if(len(crc) < 4):
+				#not displaying 2 bytes
+				x = 4-len(crc)	#determine needed nibbles
+				for i in range(x):
+					#add needed zeros
+					crc='0'+crc
+					
+		#Create Response
 		combination = ID + data + crc
 		byteString = bytes(combination, self.defaultEncoding)
 		
